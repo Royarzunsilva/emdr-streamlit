@@ -2,6 +2,9 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
+# ───────────── CONFIGURACIÓN DE PÁGINA ─────────────
+st.set_page_config(page_title="Visor EMDR", page_icon="💧", layout="wide")
+
 # ─────────── Fondo unificado ────────────
 st.markdown(
     """
@@ -24,10 +27,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ───────────── CONFIGURACIÓN ─────────────
-st.set_page_config(page_title="Visor EMDR", page_icon="💧", layout="wide")
-
-# ───────────── CONTROLES (SIDEBAR) ───────
+# ───────────── CONTROLES (SIDEBAR) ───────────────
 with st.sidebar:
     st.title("Visor EMDR – Controles")
     minutes = st.slider("Duración (min)", 1, 20, 10, key="dur")
@@ -40,12 +40,12 @@ running   = st.session_state.get("running", False)
 total_sec = int(minutes * 60)
 cycle_sec = float(cycle)
 
-# ───────────── AUDIO (OPCIONAL) ──────────
+# ───────────── AUDIO (OPCIONAL) ─────────────
 audio_path = Path(__file__).parent / "assets" / "relaxing_sound.mp3"
 if audio_on and audio_path.exists():
     st.audio(str(audio_path), loop=True)
 
-# ───────────── HTML + CSS + JS ───────────
+# ───────────── HTML + CSS + JS ──────────────────────
 html = f"""
 <style>
   html,body {{
@@ -76,53 +76,40 @@ html = f"""
   const running = {str(running).lower()};
   if (!running) return;
 
-  // Parámetros
-  const DUR = {total_sec};          // segundos totales
-  const CYC = {cycle_sec};          // un ciclo ida-vuelta
+  const DUR = {total_sec};
+  const CYC = {cycle_sec};
   const BAR = document.getElementById('bar');
   const TIM = document.getElementById('timer');
   const WRAP = document.getElementById('wrap');
 
-  // Solicitar fullscreen
   if (WRAP.requestFullscreen) WRAP.requestFullscreen();
   else if (WRAP.webkitRequestFullscreen) WRAP.webkitRequestFullscreen();
 
-  // Utilidades
   const two = n => n<10 ? '0'+n : n;
-  let remain = DUR;
-  let pos = 0, dir = 1;
+  let remain = DUR, pos = 0, dir = 1;
   const width = () => window.innerWidth - 12;
-  let px = width() / (CYC * 20);      // avance ≈50 ms (20 FPS)
+  let px = width() / (CYC * 20);
 
-  // Actualiza cada segundo el temporizador
   function tick() {{
     remain--;
     TIM.textContent = two(Math.floor(remain/60))+':'+two(remain%60);
     if (remain <= 0) stop();
   }}
-
-  // Mueve la barra
   function step() {{
     pos += dir * px;
     if (pos <= 0 || pos >= width()) dir *= -1;
     BAR.style.left = pos + 'px';
   }}
-
   function stop() {{
     clearInterval(move); clearInterval(clock);
     if (document.fullscreenElement) document.exitFullscreen();
-    // Pequeña espera para que salga de fullscreen y recargue
     setTimeout(() => location.reload(), 400);
   }}
 
-  // Primer valor del timer
   TIM.textContent = two(Math.floor(remain/60))+':'+two(remain%60);
-
-  // Inicia intervalos
   const move  = setInterval(step, 50);
   const clock = setInterval(tick, 1000);
 
-  // Si el usuario pulsa Escape (sale de fullscreen), detener también
   document.addEventListener('fullscreenchange', () => {{
     if (!document.fullscreenElement) stop();
   }});
@@ -130,6 +117,5 @@ html = f"""
 </script>
 """
 
-# Altura 600 px es suficiente para que el iframe sea visible;
-# la barra está en posición fixed, llenará la pantalla completa.
+# Fijamos un height amplio para que el HTML fije fullscreen correctamente
 components.html(html, height=600, scrolling=False)
