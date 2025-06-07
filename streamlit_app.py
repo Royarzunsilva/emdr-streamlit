@@ -1,81 +1,91 @@
-import time
 from pathlib import Path
-
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ─────────────────── CONFIGURACIÓN DE PÁGINA ───────────────────
-st.set_page_config(
-    page_title="Visor EMDR",
-    page_icon="💧",
-    layout="wide",
-)
+st.set_page_config(page_title="Visor EMDR", page_icon="💧", layout="wide")
+st.title("Visor EMDR – Control")
 
-st.title("Visor EMDR (estimulación bilateral)")
+# ── Controles ───────────────────────────────────────────────────
+c1, c2 = st.columns(2)
+minutes = c1.slider("Duración (min)", 1, 20, 10)
+cycle   = c2.slider("Ciclo ida-vuelta (s)", 0.3, 2.0, 0.8, 0.1)
 
-# ────────────────────────── CONTROLES ──────────────────────────
-col1, col2 = st.columns(2)
-minutes = col1.slider("Duración (min)", 1, 20, 10)
-cycle   = col2.slider("Ciclo ida-vuelta (s)", 0.3, 2.0, 0.8, 0.1)
-start   = st.button("Iniciar sesión")
+if st.button("Abrir visor"):
+    st.success(
+        "Se ha abierto una ventana nueva. "
+        "Colócala en la pantalla deseada y pulsa F11 para modo completo."
+    )
 
-# ───────────────────── AUDIO OPCIONAL ──────────────────────────
-audio_path = Path(__file__).parent / "assets" / "relaxing_sound.mp3"
-if audio_path.exists():
-    st.audio(str(audio_path), loop=True)
-else:
-    st.info("Sube assets/relaxing_sound.mp3 para música ambiente (opcional)")
+# ── Audio de fondo opcional ─────────────────────────────────────
+audio = Path(__file__).parent / "assets" / "relaxing_sound.mp3"
+if audio.exists():
+    st.audio(str(audio), loop=True)
 
-# ────────────────── FUNCIÓN PRINCIPAL EMDR ─────────────────────
-def emdr_session(total_sec: int, cycle_sec: float):
-    """Renderiza barra que se desplaza izquierda-derecha durante total_sec."""
-    html = f"""
+# ── Genera el código del visor (HTML + CSS + JS) ────────────────
+html_popup = f"""
+<script>
+function openEMDR() {{
+  // Calcula tamaño de la pantalla
+  const w = screen.width  * 0.95;
+  const h = screen.height * 0.95;
+
+  // Crea la nueva ventana
+  const win = window.open(
+    "", "EMDR_Visor",
+    "toolbar=no,menubar=no,location=no," +
+    "resizable=yes,scrollbars=no,status=no," +
+    `width=${{w}},height=${{h}}`
+  );
+
+  if (!win) {{
+    alert("El navegador ha bloqueado la ventana emergente. Permite pop-ups.");
+    return;
+  }}
+
+  // Contenido de la ventana
+  win.document.body.style.margin = "0";
+  win.document.title = "Visor EMDR";
+
+  win.document.body.innerHTML = `
     <style>
-      #wrap {{
-        position: relative;
-        width: 100%;
-        height: 120px;
-        background: #0a0a1e;
-        overflow: hidden;
-        border-radius: 4px;
-      }}
-      #bar {{
-        position: absolute;
-        top: 10px;
-        left: 0;
-        width: 8px;
-        height: 100px;
-        background: #64c8ff;
-        transition: left 30ms linear;
+      body  {{background:#0a0a1e;overflow:hidden}}
+      #bar  {{
+        position:absolute;top:0;left:0;width:12px;height:100%;
+        background:#64c8ff;transition:left 30ms linear;
+        box-shadow:0 0 12px #64c8ff;
       }}
     </style>
+    <div id='bar'></div>
+  `;
 
-    <div id="wrap"><div id="bar"></div></div>
+  const bar  = win.document.getElementById('bar');
+  const width= win.innerWidth - 12;
+  let pos=0, dir=1,
+      px = width / ({cycle}*20); // avance por frame
 
-    <script>
-      const bar  = document.getElementById('bar');
-      const wrap = document.getElementById('wrap');
+  function step(){{
+    pos += dir*px;
+    if(pos<=0||pos>=width) dir*=-1;
+    bar.style.left = pos + 'px';
+  }}
+  const t = setInterval(step,50);
+  setTimeout(()=>clearInterval(t), {minutes*60*1000});
+}}
+openEMDR();
+</script>
+"""
 
-      let pos = 0;
-      let dir = 1;                                   // 1 → derecha, -1 → izquierda
-      const px  = (wrap.clientWidth - 8) / ({cycle_sec} * 20);  // avance por frame (~50 ms)
+# ── Inyectar el script si se pulsó el botón ─────────────────────
+# (utiliza una clave en el estado para lanzar una sola vez)
+if "run_js" not in st.session_state:
+    st.session_state.run_js = False
 
-      function step() {{
-        pos += dir * px;
-        if (pos <= 0 || pos >= wrap.clientWidth - 8) {{
-          dir *= -1;
-        }}
-        bar.style.left = pos + 'px';
-      }}
+if st.session_state.run_js:
+    components.html(html_popup, height=0, width=0)
+    st.session_state.run_js = False  # resetea
 
-      const timer = setInterval(step, 50);           // ~20 FPS
-      setTimeout(() => clearInterval(timer), {total_sec*1000});
-    </script>
-    """
-    # Altura 140 px para que se vea la barra completa
-    components.html(html, height=140, scrolling=False)
+def click_js():
+    st.session_state.run_js = True
 
-# ──────────────────── EJECUCIÓN DE SESIÓN ──────────────────────
-if start:
-    emdr_session(minutes * 60, cycle)
-    st.success("Sesión terminada")
+# Conectar el callback al botón (Streamlit 1.18+)
+st.button("Abrir visor (popup)", key="open_btn", on_click=click_js)
