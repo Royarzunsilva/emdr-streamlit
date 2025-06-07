@@ -2,10 +2,10 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ───────────── Configuración ─────────────
+# ───────────── CONFIGURACIÓN ─────────────
 st.set_page_config(page_title="Visor EMDR", page_icon="💧", layout="wide")
 
-# ───────────── Controles (sidebar) ───────
+# ───────────── CONTROLES (SIDEBAR) ───────
 with st.sidebar:
     st.title("Visor EMDR – Controles")
     minutes = st.slider("Duración (min)", 1, 20, 10, key="dur")
@@ -18,7 +18,7 @@ running   = st.session_state.get("running", False)
 total_sec = int(minutes * 60)
 cycle_sec = float(cycle)
 
-# ───────────── Audio (opcional) ──────────
+# ───────────── AUDIO (OPCIONAL) ──────────
 audio_path = Path(__file__).parent / "assets" / "relaxing_sound.mp3"
 if audio_on and audio_path.exists():
     st.audio(str(audio_path), loop=True)
@@ -26,20 +26,22 @@ if audio_on and audio_path.exists():
 # ───────────── HTML + CSS + JS ───────────
 html = f"""
 <style>
-  html,body {{margin:0;background:#0a0a1e}}
+  html,body {{
+    margin:0; padding:0; background:#0a0a1e;
+  }}
   #wrap {{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;
-    background:#0a0a1e;overflow:hidden;
-    display:{'block' if running else 'none'};
+    position:fixed; top:0; left:0;
+    width:100vw; height:100vh; background:#0a0a1e;
+    overflow:hidden; display:{'block' if running else 'none'};
   }}
   #bar {{
-    position:absolute;top:0;left:0;width:12px;height:100%;
-    background:#64c8ff;box-shadow:0 0 16px #64c8ff;
+    position:absolute; top:0; left:0; width:12px; height:100%;
+    background:#64c8ff; box-shadow:0 0 16px #64c8ff;
   }}
   #timer {{
-    position:fixed;top:12px;right:18px;padding:4px 12px;
-    background:#222e3acc;color:#e0e0e0;border-radius:6px;
-    font:20px/24px Arial,Helvetica,sans-serif;
+    position:fixed; top:14px; right:20px;
+    padding:4px 14px; background:#222e3acc;
+    color:#e0e0e0; font:22px/26px Arial; border-radius:6px;
     display:{'block' if running else 'none'};
   }}
 </style>
@@ -48,46 +50,64 @@ html = f"""
 <div id="timer"></div>
 
 <script>
-(function(){{
-  if (!{str(running).lower()}) return;
+(function() {{
+  const running = {str(running).lower()};
+  if (!running) return;
 
-  const dur  = {total_sec};
-  const cyc  = {cycle_sec};
-  const wrap = document.getElementById('wrap');
-  const bar  = document.getElementById('bar');
-  const tim  = document.getElementById('timer');
+  // Parámetros
+  const DUR = {total_sec};          // segundos totales
+  const CYC = {cycle_sec};          // un ciclo ida-vuelta
+  const BAR = document.getElementById('bar');
+  const TIM = document.getElementById('timer');
+  const WRAP = document.getElementById('wrap');
 
-  // Solicitar pantalla completa
-  if (wrap.requestFullscreen) wrap.requestFullscreen();
-  else if (wrap.webkitRequestFullscreen) wrap.webkitRequestFullscreen();
+  // Solicitar fullscreen
+  if (WRAP.requestFullscreen) WRAP.requestFullscreen();
+  else if (WRAP.webkitRequestFullscreen) WRAP.webkitRequestFullscreen();
 
-  // Movimiento barra
-  let pos=0,dir=1,remain=dur;
-  const getW = () => window.innerWidth - 12;
-  let px = getW()/(cyc*20);
+  // Utilidades
+  const two = n => n<10 ? '0'+n : n;
+  let remain = DUR;
+  let pos = 0, dir = 1;
+  const width = () => window.innerWidth - 12;
+  let px = width() / (CYC * 20);      // avance ≈50 ms (20 FPS)
 
-  function two(n){{return n<10?'0'+n:n}}
-  function step(){{
-    pos += dir*px;
-    if(pos<=0||pos>=getW()) dir*=-1;
-    bar.style.left = pos+'px';
-  }}
-  function tick(){{
+  // Actualiza cada segundo el temporizador
+  function tick() {{
     remain--;
-    tim.textContent = two(Math.floor(remain/60))+':'+two(remain%60);
-    if(remain<=0) finish();
-  }}
-  function finish(){{
-    clearInterval(move); clearInterval(clk);
-    if (document.fullscreenElement) document.exitFullscreen();
-    setTimeout(()=>location.reload(), 300);
+    TIM.textContent = two(Math.floor(remain/60))+':'+two(remain%60);
+    if (remain <= 0) stop();
   }}
 
-  tim.textContent = two(Math.floor(remain/60))+':'+two(remain%60);
-  const move = setInterval(step,50);   // 20 FPS aprox
-  const clk  = setInterval(tick,1000);
+  // Mueve la barra
+  function step() {{
+    pos += dir * px;
+    if (pos <= 0 || pos >= width()) dir *= -1;
+    BAR.style.left = pos + 'px';
+  }}
+
+  function stop() {{
+    clearInterval(move); clearInterval(clock);
+    if (document.fullscreenElement) document.exitFullscreen();
+    // Pequeña espera para que salga de fullscreen y recargue
+    setTimeout(() => location.reload(), 400);
+  }}
+
+  // Primer valor del timer
+  TIM.textContent = two(Math.floor(remain/60))+':'+two(remain%60);
+
+  // Inicia intervalos
+  const move  = setInterval(step, 50);
+  const clock = setInterval(tick, 1000);
+
+  // Si el usuario pulsa Escape (sale de fullscreen), detener también
+  document.addEventListener('fullscreenchange', () => {{
+    if (!document.fullscreenElement) stop();
+  }});
 }})();
 </script>
 """
 
-components.html(html, height=0, width=0, scrolling=False)
+# Altura 600 px es suficiente para que el iframe sea visible;
+# la barra está en posición fixed, llenará la pantalla completa.
+components.html(html, height=600, scrolling=False)
