@@ -1,28 +1,34 @@
 import time
 from pathlib import Path
+
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ── Configuración general ────────────────────────────────────
-st.set_page_config(page_title="Visor EMDR", page_icon="💧", layout="wide")
+# ─────────────────── CONFIGURACIÓN DE PÁGINA ───────────────────
+st.set_page_config(
+    page_title="Visor EMDR",
+    page_icon="💧",
+    layout="wide",
+)
 
 st.title("Visor EMDR (estimulación bilateral)")
 
-# ── Controles de usuario ─────────────────────────────────────
-c1, c2 = st.columns(2)
-minutes = c1.slider("Duración (min)", 1, 20, 10)
-cycle   = c2.slider("Ciclo ida-vuelta (s)", 0.3, 2.0, 0.8, 0.1)
+# ────────────────────────── CONTROLES ──────────────────────────
+col1, col2 = st.columns(2)
+minutes = col1.slider("Duración (min)", 1, 20, 10)
+cycle   = col2.slider("Ciclo ida-vuelta (s)", 0.3, 2.0, 0.8, 0.1)
 start   = st.button("Iniciar sesión")
 
-# ── Audio opcional ───────────────────────────────────────────
+# ───────────────────── AUDIO OPCIONAL ──────────────────────────
 audio_path = Path(__file__).parent / "assets" / "relaxing_sound.mp3"
 if audio_path.exists():
     st.audio(str(audio_path), loop=True)
 else:
-    st.info("Sube assets/relaxing_sound.mp3 para música de fondo (opcional)")
+    st.info("Sube assets/relaxing_sound.mp3 para música ambiente (opcional)")
 
-# ── Función principal de la sesión ───────────────────────────
+# ────────────────── FUNCIÓN PRINCIPAL EMDR ─────────────────────
 def emdr_session(total_sec: int, cycle_sec: float):
+    """Renderiza barra que se desplaza izquierda-derecha durante total_sec."""
     html = f"""
     <style>
       #wrap {{
@@ -31,11 +37,12 @@ def emdr_session(total_sec: int, cycle_sec: float):
         height: 120px;
         background: #0a0a1e;
         overflow: hidden;
+        border-radius: 4px;
       }}
       #bar {{
         position: absolute;
         top: 10px;
-        left: 0px;
+        left: 0;
         width: 8px;
         height: 100px;
         background: #64c8ff;
@@ -65,10 +72,10 @@ def emdr_session(total_sec: int, cycle_sec: float):
       setTimeout(() => clearInterval(timer), {total_sec*1000});
     </script>
     """
-
+    # Altura 140 px para que se vea la barra completa
     components.html(html, height=140, scrolling=False)
 
-# ── Lógica de ejecución ──────────────────────────────────────
+# ──────────────────── EJECUCIÓN DE SESIÓN ──────────────────────
 if start:
     emdr_session(minutes * 60, cycle)
     st.success("Sesión terminada")
