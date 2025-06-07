@@ -2,6 +2,28 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
+# ─────────── Fondo unificado ────────────
+st.markdown(
+    """
+    <style>
+      /* Fondo general de la app */
+      .reportview-container, .main, .block-container {
+        background-color: #0a0a1e !important;
+        color: #e0e0e0;
+      }
+      /* Barra lateral */
+      .sidebar .sidebar-content {
+        background-color: #0a0a1e !important;
+      }
+      /* Elimina márgenes internos de Streamlit */
+      .css-12oz5g7, .css-18e3th9 {
+        padding: 0 !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ───────────── CONFIGURACIÓN ─────────────
 st.set_page_config(page_title="Visor EMDR", page_icon="💧", layout="wide")
 
